@@ -2,6 +2,17 @@ plugins {
     id 'com.android.application'
 }
 
+// ---------------------------------------------------------------------------
+// TV 端「直接覆盖安装 / 不卸载更新」依赖三件事，改动发布配置时请勿破坏：
+//   1) applicationId 保持不变：com.cleantv.launcher
+//   2) 每个版本都使用同一张签名证书：signing/cleantv-release.jks
+//   3) 每次发版 versionCode 必须 +1（否则 adb install -r 会因降级被拒绝）
+// 密钥文件不进 Git（见 .gitignore），请自行备份；一旦丢失只能卸载重装。
+// 若仓库里没有该密钥（例如他人 clone 后构建），自动回退到本机 debug 签名。
+// ---------------------------------------------------------------------------
+def releaseKeystore = rootProject.file('signing/cleantv-release.jks')
+def useStableSigning = releaseKeystore.exists()
+
 android {
     namespace 'com.cleantv.launcher'
     compileSdk 35
@@ -10,6 +21,7 @@ android {
         applicationId 'com.cleantv.launcher'
         minSdk 21
         targetSdk 34
+        // 每次发布新版本必须递增，例如 2 / 3 ...，配合 adb install -r 覆盖安装
         versionCode 1
         versionName '1.0.0'
 
@@ -23,14 +35,27 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
+    signingConfigs {
+        if (useStableSigning) {
+            stable {
+                storeFile releaseKeystore
+                storePassword 'cleantv-release-2026'
+                keyAlias 'cleantv'
+                keyPassword 'cleantv-release-2026'
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
-            signingConfig signingConfigs.debug
+            signingConfig useStableSigning ? signingConfigs.stable : signingConfigs.debug
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
             minifyEnabled false
+            // debug 包同样使用固定证书，避免开发包与正式包在电视上签名冲突
+            signingConfig useStableSigning ? signingConfigs.stable : signingConfigs.debug
         }
     }
 

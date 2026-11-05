@@ -2,6 +2,9 @@
 /build
 /app/build
 /local.properties
+/signing/*.jks
+/signing/*.keystore
+/keystore.properties
 *.apk
 *.iml
 .DS_Store
