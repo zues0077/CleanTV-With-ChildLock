@@ -383,29 +383,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // could never be reached with the remote.
             return keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && v.getId() == R.id.btnLibrary;
         };
-        // The top of the desk reads as one row: the buttons sit on the clock's middle line. The
-        // clock's own box is taller than its digits — numbers do not descend — so the line is found
-        // from the font: the middle of the digits themselves. The date is a row of its own above the
-        // clock now, so it is not part of this alignment.
-        final View clockRow = findViewById(R.id.clockRow);
-        final View topButtons = findViewById(R.id.topButtons);
-        final android.widget.TextClock clock = findViewById(R.id.clock);
-        clockRow.post(() -> {
-            int rowH = clockRow.getHeight();
-            int barH = topButtons.getHeight();
-            if (rowH <= 0 || barH <= 0) return;
-            // The ink of a digit reaches from about 0.68 of the em above the baseline down to the
-            // baseline itself — numbers do not descend. Measured against the rendered clock, that is
-            // where the eye reads the middle of the digits.
-            float baseline = clock.getBaseline();
-            float digitMiddle = baseline - clock.getTextSize() * 0.34f;
-            float line = clock.getTop() + digitMiddle;          // where that is in the row
-            // The buttons hang from the row's bottom: lift them so their middle lands on the line.
-            android.widget.RelativeLayout.LayoutParams lp =
-                    (android.widget.RelativeLayout.LayoutParams) topButtons.getLayoutParams();
-            lp.bottomMargin = Math.round(rowH - (line + barH / 2f));
-            topButtons.setLayoutParams(lp);
-        });
+        // Alignment is now expressed purely in activity_main.xml: the pills occupy their own row
+        // and the weather card / clock share the row below. The old post-layout adjustment measured
+        // the removed clockRow placeholder and cast the pill row's params to RelativeLayout.LayoutParams;
+        // with a LinearLayout parent that cast would throw, so it has been retired.
 
         findViewById(R.id.btnDock).setOnKeyListener(pillKeys);
         findViewById(R.id.btnWallpaper).setOnKeyListener(pillKeys);
@@ -1789,6 +1770,7 @@ private int recommendColumns() {
         fitGlass(card);
 
         View item = (View) card.getParent();
+        alignHeroTo(tileRect.exactCenterX());
         showHero(position, tileRect.top);
     }
 
@@ -2329,6 +2311,18 @@ private int recommendColumns() {
 
     // ---- top shelf -------------------------------------------------------------------------------
 
+    /**
+     * Centre the heading over the tile that is actually on screen. The grid consumes its own
+     * 40dp start padding when it scrolls a focused tile into view, so the first card sits at a
+     * different x before and after that scroll: a fixed XML margin can only be right in one of
+     * the two states. The glass highlight is fitted from the same tileRect, so both stay in step.
+     */
+    private void alignHeroTo(float cardCenterX) {
+        if (heroName.getWidth() <= 0) return;
+        float heroCenter = heroName.getLeft() + heroName.getWidth() / 2f;
+        heroName.setTranslationX(cardCenterX - heroCenter);
+    }
+
     private void showHero(int position, float dockTopInRoot) {
         String label = adapter.labelAt(position);
         int color = adapter.ambientColorAt(position);
@@ -2353,10 +2347,13 @@ private int recommendColumns() {
             heroName.setAlpha(1f);
             ambient.setAlpha(1f);
         } else if (changed) {
-            heroName.animate().alpha(0f).translationX(-12 * density).setDuration(120).withEndAction(() -> {
+            // The slide is relative to the alignment of the focused tile, not to zero: ending at
+            // translationX(0) here would undo the centring done by alignHeroTo().
+            final float base = heroName.getTranslationX();
+            heroName.animate().alpha(0f).translationX(base - 12 * density).setDuration(120).withEndAction(() -> {
                 heroName.setText(label);
-                heroName.setTranslationX(12 * density);
-                heroName.animate().alpha(1f).translationX(0f).setDuration(200).start();
+                heroName.setTranslationX(base + 12 * density);
+                heroName.animate().alpha(1f).translationX(base).setDuration(200).start();
             }).start();
             if (color != ambientColor) {
                 ambient.animate().alpha(0.35f).setDuration(200).withEndAction(() -> {

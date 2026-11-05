@@ -68,7 +68,7 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 | --- | --- |
 | `applicationId` 不变 | 固定 `com.cleantv.launcher` |
 | 签名证书不变 | 所有版本使用同一张证书 |
-| `versionCode` 递增 | 每次发版在 `app/build.gradle` 里 +1（当前为 `1`），否则系统会判定为降级并拒绝安装 |
+| `versionCode` 递增 | 每次发版在 `app/build.gradle` 里 +1（当前为 `2`，v1.0.1），否则系统会判定为降级并拒绝安装 |
 
 签名配置位于 `app/build.gradle`：`release` 与 `debug` **共用** `signingConfigs.stable`，避免开发包与正式包在电视上签名冲突。证书文件为 `signing/cleantv-release.jks`（PKCS12，alias `cleantv`），该文件被 `.gitignore` 排除、**不会提交到公开仓库**，请务必自行备份——一旦丢失，只能卸载后重装一次，之后才恢复可覆盖安装。
 
